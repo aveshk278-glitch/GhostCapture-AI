@@ -209,7 +209,10 @@ class MainActivity : ComponentActivity() {
     /** True when Android's "Show touches" developer option is on. */
     fun isShowTouchesOn(): Boolean {
         return try {
-            Settings.System.getInt(contentResolver, Settings.System.SHOW_TOUCHES, 0) == 1
+            // "show_touches" is the setting key. Do NOT use the SHOW_TOUCHES
+            // constant — it is a hidden API and not in the public SDK, so
+            // referencing it fails compilation ("Unresolved reference").
+            Settings.System.getInt(contentResolver, "show_touches", 0) == 1
         } catch (e: Exception) {
             false
         }
