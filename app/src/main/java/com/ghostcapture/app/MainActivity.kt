@@ -209,7 +209,7 @@ class MainActivity : ComponentActivity() {
     /** True when Android's "Show touches" developer option is on. */
     fun isShowTouchesOn(): Boolean {
         return try {
-            Settings.Global.getInt(contentResolver, Settings.Global.SHOW_TOUCHES, 0) == 1
+            Settings.System.getInt(contentResolver, Settings.System.SHOW_TOUCHES, 0) == 1
         } catch (e: Exception) {
             false
         }
