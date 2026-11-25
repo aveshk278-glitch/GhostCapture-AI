@@ -1,19 +1,11 @@
-# Android / Gradle
-*.iml
-.gradle
-/local.properties
-/.idea/
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-*.apk
-*.aab
-# App outputs
-app/build/
+.gradle/
 build/
-# Keystore (never commit signing keys)
+local.properties
 *.jks
 *.keystore
+*.apk
+.idea/
+__pycache__/
+.venv/
+.ghostcapture/
+exports/
