@@ -16,7 +16,9 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.util.Log
@@ -99,6 +101,7 @@ class RecorderService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var mediaProjection: MediaProjection? = null
+    private var projectionCallback: MediaProjection.Callback? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var mediaRecorder: MediaRecorder? = null
     private var outputUri: Uri? = null
@@ -193,6 +196,23 @@ class RecorderService : Service() {
                 getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val projection = projectionManager.getMediaProjection(resultCode, resultData)
             mediaProjection = projection
+            // Android 14+ REQUIRES a callback registered BEFORE
+            // createVirtualDisplay(), otherwise it throws:
+            // "Must register a callback before starting capture, to manage
+            // resources in response to MediaProjection states."
+            val callback = object : MediaProjection.Callback() {
+                override fun onStop() {
+                    // The system stopped the projection (e.g. the user
+                    // revoked capture). Stop gracefully if still recording.
+                    if (RecorderState.isRecording.value) {
+                        handleStop()
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf()
+                    }
+                }
+            }
+            projectionCallback = callback
+            projection.registerCallback(callback, Handler(Looper.getMainLooper()))
             virtualDisplay = projection.createVirtualDisplay(
                 "GhostCapture",
                 width,
@@ -254,6 +274,22 @@ class RecorderService : Service() {
         stopSelf()
     }
 
+    /** Unregister the projection callback and stop the projection. */
+    private fun releaseProjection() {
+        try {
+            projectionCallback?.let { mediaProjection?.unregisterCallback(it) }
+        } catch (e: Exception) {
+            // Nothing to do — callback is being released anyway.
+        }
+        projectionCallback = null
+        try {
+            mediaProjection?.stop()
+        } catch (e: Exception) {
+            // Nothing to do — projection is being released anyway.
+        }
+        mediaProjection = null
+    }
+
     private fun stopRecording(successExpected: Boolean) {
         timerJob?.cancel()
         timerJob = null
@@ -273,12 +309,7 @@ class RecorderService : Service() {
         mediaRecorder = null
         virtualDisplay?.release()
         virtualDisplay = null
-        try {
-            mediaProjection?.stop()
-        } catch (e: Exception) {
-            // Nothing to do — projection is being released anyway.
-        }
-        mediaProjection = null
+        releaseProjection()
         try {
             outputPfd?.close()
         } catch (e: Exception) {
@@ -327,12 +358,7 @@ class RecorderService : Service() {
         mediaRecorder = null
         virtualDisplay?.release()
         virtualDisplay = null
-        try {
-            mediaProjection?.stop()
-        } catch (e: Exception) {
-            // Nothing to do — projection is being released anyway.
-        }
-        mediaProjection = null
+        releaseProjection()
         try {
             outputPfd?.close()
         } catch (e: Exception) {
@@ -363,12 +389,7 @@ class RecorderService : Service() {
         mediaRecorder = null
         virtualDisplay?.release()
         virtualDisplay = null
-        try {
-            mediaProjection?.stop()
-        } catch (e: Exception) {
-            // Nothing to do — service is being destroyed.
-        }
-        mediaProjection = null
+        releaseProjection()
         try {
             outputPfd?.close()
         } catch (e: Exception) {
