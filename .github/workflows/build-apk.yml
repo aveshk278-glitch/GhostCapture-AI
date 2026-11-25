@@ -37,7 +37,20 @@ jobs:
         # because the GitHub push used for this project only carries UTF-8
         # text files, so gradle/wrapper/gradle-wrapper.jar is not in the
         # repository. The gradlew script is still in the repo for local use.
-        run: gradle assembleDebug --stacktrace
+        # Retry up to 3 times: Maven Central sometimes rate-limits (HTTP 429)
+        # the shared runner IP, which is transient and not a code error.
+        run: |
+          for attempt in 1 2 3; do
+            echo "Build attempt $attempt of 3"
+            if gradle assembleDebug --stacktrace; then
+              echo "Build succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Build attempt $attempt failed; waiting 60s before retry..."
+            sleep 60
+          done
+          echo "Build failed after 3 attempts"
+          exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
