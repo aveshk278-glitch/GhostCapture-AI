@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GhostCapture" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/ghost_cyan</item>
+        <item name="colorPrimaryDark">@color/ghost_black</item>
+        <item name="colorAccent">@color/ghost_purple</item>
+        <item name="android:windowBackground">@color/ghost_black</item>
+    </style>
+</resources>
